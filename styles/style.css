@@ -1,0 +1,17 @@
+.row p {
+    display: inline-block;
+    margin-right: 30px;
+    width: 200px;
+    margin: 0;
+}
+
+.row{
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    
+}
+
+.location{
+    width: 300px;
+}
