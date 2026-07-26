@@ -24,7 +24,9 @@ findRouteButton.
 
         let routeHtml='';
 
-        if (path && altPath && path!== altPath) {
+        const sameRoute = JSON.stringify(path) === JSON.stringify(altPath);
+
+        if (path && altPath && !sameRoute) {
             if (path.length === 1) {
                 routeHtml = `
                     <div>You are already at ${path[0]}</div>
@@ -41,7 +43,7 @@ findRouteButton.
             }
         }
 
-        else if (path === altPath && path) {
+        else if (path && sameRoute) {
             if (path.length === 1) {
                 routeHtml = `
                     <div>You are already at ${path[0]}</div>`;
@@ -211,13 +213,6 @@ function displayRoute(path, busNo, time, fare){
         <div>&darr;</div>
     `;
 
-    // html = `
-    // <div>ROUTE FOUND!</div>
-    // <div>${path.join(' => ')}</div>
-    // <div>Bus Route : ${busNo.join(' => ')}</div>
-    // <div>Time : ${time} min</div>
-    // <div>Fare : &#8377;${fare}</div>
-    // `
     for(let i = 1; i<(path.length)-1; i++){
         if(busNo[i] === busNo[i-1]){
             routeHtml += `
