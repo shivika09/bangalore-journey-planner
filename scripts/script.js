@@ -21,6 +21,7 @@ findRouteButton.
         const path = findRoute(start, end, routes);
         const altPath = findAltRoute(start, end, routes);
         const fastestPath = findRouteLeastTime(start,end,routes);
+        const leastChangePath = findRouteLeastChange(start,end,routes);
 
         let routeHtml='';
 
@@ -33,63 +34,78 @@ findRouteButton.
             `;
         }
         else{
-            const samePA = JSON.stringify(path) === JSON.stringify(altPath);
-            const samePF = JSON.stringify(path) === JSON.stringify(fastestPath);
-            const sameAF = JSON.stringify(altPath) === JSON.stringify(fastestPath);
+            const uniqueRoutes = [];
 
             const {busNo, time, fare} = findBusTimeFare(path,routes);
             const {busNo: altBusNo, time: altTime, fare: altFare} = findBusTimeFare(altPath,routes);
             const {busNo: fastestBusNo, time: fastestTime, fare: fastestFare} = findBusTimeFare(fastestPath,routes);
+            const {busNo: leastBusNo, time: leastTime, fare: leastFare} = findBusTimeFare(leastChangePath,routes);
 
-            if (samePA && samePF){
-                routeHtml += "<h3>PRIMARY ROUTE ⭐ FASTEST</h3>";
-                routeHtml += displayRoute(path, busNo, time, fare);
+            const routesToShow = [
+            {
+                type: "primary",
+                label: "PRIMARY ROUTE",
+                path,
+                busNo,
+                time,
+                fare
+            },
+            {
+                type: "alternative",
+                label: "ALTERNATIVE ROUTE",
+                path: altPath,
+                busNo: altBusNo,
+                time: altTime,
+                fare: altFare
+            },
+            {
+                type: "fastest",
+                label: "FASTEST ROUTE",
+                path: fastestPath,
+                busNo: fastestBusNo,
+                time: fastestTime,
+                fare: fastestFare
+            },
+            {
+                type: "leastChange",
+                label: "LEAST BUS CHANGES",
+                path: leastChangePath,
+                busNo: leastBusNo,
+                time: leastTime,
+                fare: leastFare
+            }
+            ];
+
+            for(const route of routesToShow){
+                const existing = uniqueRoutes.find((unique) => 
+                    JSON.stringify(unique.path) === JSON.stringify(route.path)
+                );
+                if(!existing){
+                    uniqueRoutes.push(route);
+                }
+                else if(route.type === "alternative"){
+                    continue;
+                }
+                else if(existing.type === "alternative"){
+                    existing.type = route.type;
+                    existing.label = route.label;
+                }
+                else{
+                    existing.label += ` ⭐ ${route.label}`;
+                }
+
             }
 
-            else if(samePA){
-                routeHtml += "<h3>PRIMARY ROUTE</h3>";
-                routeHtml += displayRoute(path, busNo, time, fare);
-
-                routeHtml += "<br><h3>FASTEST ROUTE</h3>";
-                routeHtml += displayRoute(fastestPath, fastestBusNo, fastestTime, fastestFare);
-            }
-
-             else if (samePF) {
-
-                routeHtml += "<h3>PRIMARY ROUTE ⭐ FASTEST</h3>";
-                routeHtml += displayRoute(path, busNo, time, fare);
-
-                routeHtml += "<br><h3>ALTERNATIVE ROUTE</h3>";
-                routeHtml += displayRoute(altPath, altBusNo, altTime, altFare);
-
-            }
-
-            else if (sameAF) {
-
-                routeHtml += "<h3>PRIMARY ROUTE</h3>";
-                routeHtml += displayRoute(path, busNo, time, fare);
-
-                routeHtml += "<br><h3>ALTERNATIVE ROUTE ⭐ FASTEST</h3>";
-                routeHtml += displayRoute(altPath, altBusNo, altTime, altFare);
-
-            }
-
-            else {
-
-                routeHtml += "<h3>PRIMARY ROUTE</h3>";
-                routeHtml += displayRoute(path, busNo, time, fare);
-
-                routeHtml += "<br><h3>ALTERNATIVE ROUTE</h3>";
-                routeHtml += displayRoute(altPath, altBusNo, altTime, altFare);
-
-                routeHtml += "<br><h3>FASTEST ROUTE</h3>";
-                routeHtml += displayRoute(fastestPath, fastestBusNo, fastestTime, fastestFare);
-
-            }
+            for(const route of uniqueRoutes){
+                routeHtml += `<div class="route-display">
+                    ${displayRoute(
+                        route.label, route.path, route.busNo, route.time, route.fare
+                    )} </div>`;
+            }   
         }
 
-
         document.querySelector('.js-route-box').innerHTML = routeHtml;
+
 
 
 });
@@ -230,9 +246,12 @@ function findAltRoute(start,end,routes){
 }
 
 
-function displayRoute(path, busNo, time, fare){
+function displayRoute(label, path, busNo, time, fare){
 
-    let routeHtml=`<h4>Take Bus ${busNo[0]}</h4>
+    let routeHtml=`
+        <h2>${label}</h2>
+
+        <h4>Take Bus ${busNo[0]}</h4>
         <div>${path[0]}</div>
         <div>&darr;</div>
     `;
@@ -324,6 +343,87 @@ function findRouteLeastTime(start,end,routes){
             }
         }
         currentStop = nextStop;
+
+    }
+    return null;
+}
+
+function findRouteLeastChange(start,end,routes){
+    const change = {};
+    const parent = {};
+    const visited = [];
+    const finalRoute = [];
+    const busUsed = {};
+
+    let currentStop = start;
+    busUsed[start] =  null;
+    let currentBus = null;
+    change[currentStop] = 0;
+
+    while(true){
+        if (!currentStop){
+            break;
+        }
+
+        if (currentStop === end){
+            let current = end;
+
+            while(current != null){
+                finalRoute.push(current);
+                if (current === start){
+                    break;
+                }
+                current = parent[current];
+            }
+            return finalRoute.reverse();
+        }
+        
+        const neighbors = routes[currentStop];
+
+        if (neighbors){
+            for (const neighbor of neighbors){
+                let newChange = 0;
+                let newBus = neighbor.route;
+                if(!visited.includes(neighbor.stop)){
+                    if(currentBus!==null){
+                        newChange = change[currentStop] + ((newBus === currentBus)?0:1);
+                    }
+                    else{
+                        newChange = change[currentStop];
+                    }
+                    
+                    if(change[neighbor.stop] != null){
+                        if(newChange < change[neighbor.stop]){
+                            change[neighbor.stop] = newChange;
+                            parent[neighbor.stop] = currentStop;
+                            busUsed[neighbor.stop] = newBus;
+                        }
+                    }
+                    else{
+                        change[neighbor.stop] = newChange;
+                        parent[neighbor.stop] = currentStop;
+                        busUsed[neighbor.stop] = newBus;
+
+                    }  
+                }
+            }
+        }
+        
+
+        visited.push(currentStop);
+
+        let smallestChange = Infinity;
+        let nextStop = null;
+        for(const stop in change){
+            if(!visited.includes(stop)){
+                if(change[stop] < smallestChange){
+                    smallestChange = change[stop];
+                    nextStop = stop;
+                }
+            }
+        }
+        currentStop = nextStop;
+        currentBus = busUsed[currentStop];
 
     }
     return null;
