@@ -7,11 +7,33 @@
     <body>
         <div class="row">
             <p class="start-text">Choose Start Location</p>
-            <input class="js-start-location" type="textbox" placeholder="Enter location" >    
+            <!-- <input class="js-start-location" type="textbox" placeholder="Enter location" >  
+           -->
+            <!-- <select class="js-start-location">
+                <option value="">Select Start Location</option>
+            </select> -->
+
+            <input 
+                class="js-start-location"
+                list="start-stops"
+                placeholder="Enter Start Location">
+
+            <datalist id="start-stops"></datalist>
         </div>
         <div class="row">
             <p class="end-text">Choose Final Destination</p>
-            <input class="js-end-location" type="textbox" placeholder="Enter location">
+            <!-- <input class="js-end-location" type="textbox" placeholder="Enter location">
+              -->
+            <!-- <select class="js-end-location">
+                <option value="">Select end Location</option>
+            </select> -->
+
+            <input 
+                class="js-end-location"
+                list="end-stops"
+                placeholder="Enter End Location">
+
+            <datalist id="end-stops"></datalist>
         </div>
 
         <button class="find-route-button js-find-route-button">Find route</button>

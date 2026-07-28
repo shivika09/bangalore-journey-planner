@@ -1,5 +1,14 @@
 import {routes} from "../data/routes.js"
 
+const selectStart = document.querySelector('#start-stops');
+const selectEnd = document.querySelector('#end-stops');
+
+const stops = Object.keys(routes).sort();
+
+for(const stop of stops){
+    selectStart.innerHTML += `<option value="${stop}">`;
+    selectEnd.innerHTML += `<option value="${stop}">`;
+}
 
 const findRouteButton = document.querySelector('.js-find-route-button');
 
@@ -8,9 +17,6 @@ findRouteButton.
         const start = document.querySelector('.js-start-location').value.trim().toLowerCase();
         const end = document.querySelector('.js-end-location').value.trim().toLowerCase();
 
-        // const matchingRoute = routes.find((route) => {
-        // return route.start === start && route.end === end;
-        // });
 
         if(start==='' || end===''){
             document.querySelector('.js-route-box').innerHTML='<div>Please enter the locations</div>';
@@ -22,6 +28,7 @@ findRouteButton.
         const altPath = findAltRoute(start, end, routes);
         const fastestPath = findRouteLeastTime(start,end,routes);
         const leastChangePath = findRouteLeastChange(start,end,routes);
+        const leastFarePath = findRouteLeastFare(start,end,routes);
 
         let routeHtml='';
 
@@ -40,6 +47,7 @@ findRouteButton.
             const {busNo: altBusNo, time: altTime, fare: altFare} = findBusTimeFare(altPath,routes);
             const {busNo: fastestBusNo, time: fastestTime, fare: fastestFare} = findBusTimeFare(fastestPath,routes);
             const {busNo: leastBusNo, time: leastTime, fare: leastFare} = findBusTimeFare(leastChangePath,routes);
+            const {busNo: cheapBusNo, time: cheapTime, fare: cheapFare} = findBusTimeFare(leastFarePath,routes);
 
             const routesToShow = [
             {
@@ -73,6 +81,14 @@ findRouteButton.
                 busNo: leastBusNo,
                 time: leastTime,
                 fare: leastFare
+            },
+            {
+                type: "leastFare",
+                label: "CHEAPEST",
+                path: leastFarePath,
+                busNo: cheapBusNo,
+                time: cheapTime,
+                fare: cheapFare
             }
             ];
 
@@ -424,6 +440,73 @@ function findRouteLeastChange(start,end,routes){
         }
         currentStop = nextStop;
         currentBus = busUsed[currentStop];
+
+    }
+    return null;
+}
+
+function findRouteLeastFare(start,end,routes){
+    const cost = {};
+    const parent = {};
+    const visited = [];
+    const finalRoute = [];
+
+    let currentStop = start;
+    cost[currentStop] = 0;
+
+    while(true){
+        if (!currentStop){
+            break;
+        }
+
+        if (currentStop === end){
+            let current = end;
+
+            while(current != null){
+                finalRoute.push(current);
+                if (current === start){
+                    break;
+                }
+                current = parent[current];
+            }
+            return finalRoute.reverse();
+        }
+        
+        const neighbors = routes[currentStop];
+
+        if (neighbors){
+            for (const neighbor of neighbors){
+                let newCost = 0;
+                if(!visited.includes(neighbor.stop)){
+                    newCost = cost[currentStop] + neighbor.fare;
+                    if(cost[neighbor.stop] != null){
+                        if(newCost < cost[neighbor.stop]){
+                            cost[neighbor.stop] = newCost;
+                            parent[neighbor.stop] = currentStop;
+                        }
+                    }
+                    else{
+                        cost[neighbor.stop] = newCost;
+                        parent[neighbor.stop] = currentStop;
+                    }  
+                }
+            }
+        }
+        
+
+        visited.push(currentStop);
+
+        let smallestCost = Infinity;
+        let nextStop = null;
+        for(const stop in cost){
+            if(!visited.includes(stop)){
+                if(cost[stop] < smallestCost){
+                    smallestCost = cost[stop];
+                    nextStop = stop;
+                }
+            }
+        }
+        currentStop = nextStop;
 
     }
     return null;
