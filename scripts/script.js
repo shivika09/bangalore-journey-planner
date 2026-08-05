@@ -5,10 +5,17 @@ const selectEnd = document.querySelector('#end-stops');
 
 const stops = Object.keys(routes).sort();
 
+let startHTML = "";
+let endHTML = "";
+
 for(const stop of stops){
-    selectStart.innerHTML += `<option value="${stop}">`;
-    selectEnd.innerHTML += `<option value="${stop}">`;
+     startHTML += `<option value="${stop}">`;
+     endHTML += `<option value="${stop}">`;
 }
+
+selectStart.innerHTML = startHTML;
+selectEnd.innerHTML = endHTML;
+
 
 const findRouteButton = document.querySelector('.js-find-route-button');
 
@@ -23,12 +30,17 @@ findRouteButton.
             return;
         }
 
+        const {path: lleastChangePath, buses: lleastChangeBuses} = findRouteLeastChange(start,end,routes);
+        console.log(lleastChangePath);
+        console.log(lleastChangeBuses);
+
+
         
         const path = findRoute(start, end, routes);
         const altPath = findAltRoute(start, end, routes);
-        const fastestPath = findRouteLeastTime(start,end,routes);
-        const leastChangePath = findRouteLeastChange(start,end,routes);
-        const leastFarePath = findRouteLeastFare(start,end,routes);
+        // const fastestPath = findRouteLeastTime(start,end,routes);
+        const {path: leastChangePath, buses: leastChangeBuses} = findRouteLeastChange(start,end,routes);
+        // const leastFarePath = findRouteLeastFare(start,end,routes);
 
         let routeHtml='';
 
@@ -45,9 +57,9 @@ findRouteButton.
 
             const {busNo, time, fare} = findBusTimeFare(path,routes);
             const {busNo: altBusNo, time: altTime, fare: altFare} = findBusTimeFare(altPath,routes);
-            const {busNo: fastestBusNo, time: fastestTime, fare: fastestFare} = findBusTimeFare(fastestPath,routes);
+            // const {busNo: fastestBusNo, time: fastestTime, fare: fastestFare} = findBusTimeFare(fastestPath,routes);
             const {busNo: leastBusNo, time: leastTime, fare: leastFare} = findBusTimeFare(leastChangePath,routes);
-            const {busNo: cheapBusNo, time: cheapTime, fare: cheapFare} = findBusTimeFare(leastFarePath,routes);
+            // const {busNo: cheapBusNo, time: cheapTime, fare: cheapFare} = findBusTimeFare(leastFarePath,routes);
 
             const routesToShow = [
             {
@@ -66,35 +78,36 @@ findRouteButton.
                 time: altTime,
                 fare: altFare
             },
-            {
-                type: "fastest",
-                label: "FASTEST ROUTE",
-                path: fastestPath,
-                busNo: fastestBusNo,
-                time: fastestTime,
-                fare: fastestFare
-            },
+            // {
+            //     type: "fastest",
+            //     label: "FASTEST ROUTE",
+            //     path: fastestPath,
+            //     busNo: fastestBusNo,
+            //     time: fastestTime,
+            //     fare: fastestFare
+            // },
             {
                 type: "leastChange",
                 label: "LEAST BUS CHANGES",
                 path: leastChangePath,
-                busNo: leastBusNo,
+                busNo: leastChangeBuses,
                 time: leastTime,
                 fare: leastFare
-            },
-            {
-                type: "leastFare",
-                label: "CHEAPEST",
-                path: leastFarePath,
-                busNo: cheapBusNo,
-                time: cheapTime,
-                fare: cheapFare
             }
+            // {
+            //     type: "leastFare",
+            //     label: "CHEAPEST",
+            //     path: leastFarePath,
+            //     busNo: cheapBusNo,
+            //     time: cheapTime,
+            //     fare: cheapFare
+            // }
             ];
 
             for(const route of routesToShow){
                 const existing = uniqueRoutes.find((unique) => 
-                    JSON.stringify(unique.path) === JSON.stringify(route.path)
+                    JSON.stringify(unique.path) === JSON.stringify(route.path) && 
+                    JSON.stringify(unique.busNo) === JSON.stringify(route.busNo)
                 );
                 if(!existing){
                     uniqueRoutes.push(route);
@@ -122,6 +135,7 @@ findRouteButton.
 
         document.querySelector('.js-route-box').innerHTML = routeHtml;
 
+        
 
 
 });
@@ -364,7 +378,7 @@ function findRouteLeastTime(start,end,routes){
     return null;
 }
 
-function findRouteLeastChange(start,end,routes){
+function altfindRouteLeastChange(start,end,routes){
     const change = {};
     const parent = {};
     const visited = [];
@@ -511,3 +525,116 @@ function findRouteLeastFare(start,end,routes){
     }
     return null;
 }
+
+
+function findRouteLeastChange(start,end,routes){
+    const change = {};
+    const parent = {};
+    const visited = {};
+    const finalRoute = [];
+    const busRoute = [];
+
+    let currentStop = start;
+    let currentBus = null;
+    change[currentStop] = {
+        null : 0
+    };
+
+    while(true){
+        if (!currentStop){
+            break;
+        }
+
+        if (currentStop === end){
+            let current = end;
+            let bus = currentBus;
+
+            while(current != null){
+                finalRoute.push(current);
+                if (current!= start && bus != null){
+                    busRoute.unshift(bus);
+                }
+                if (current === start){
+                    break;
+                }
+                const previous = parent[current][bus];
+
+                current = previous.stop;
+                bus = previous.bus;
+            }
+            return {path: finalRoute.reverse(),
+                    buses: busRoute
+            };
+        }
+        
+        const neighbors = routes[currentStop];
+
+        if (neighbors){
+            for (const neighbor of neighbors){
+                let newChange = 0;
+                let newBus = neighbor.route;
+                if(!(neighbor.stop in visited) || (stop in visited && !visited[stop].includes(newBus))){
+                    if(currentBus!==null){
+                        newChange = change[currentStop][currentBus] + ((newBus === currentBus)?0:1);
+                    }
+                    else{
+                        newChange = 0;
+                    }
+
+                    if (!(neighbor.stop in change)){
+                        change[neighbor.stop] = {};
+                    }
+
+                    if (!(neighbor.stop in parent)) {
+                        parent[neighbor.stop] = {};
+                    }
+                    
+                    if(!(newBus in change[neighbor.stop])){
+                        change[neighbor.stop][newBus] = newChange;
+                        parent[neighbor.stop][newBus] = {
+                                                        "stop" : currentStop,
+                                                        "bus" : currentBus};
+                    }
+
+                    else if(newChange < change[neighbor.stop][newBus]){
+                            change[neighbor.stop][newBus] = newChange;
+                            parent[neighbor.stop][newBus] = {
+                                                        "stop" : currentStop,
+                                                        "bus" : currentBus};
+                    } 
+                }
+            }
+        }
+        if (!(currentStop in visited)){
+            visited[currentStop] = [];
+        }
+
+        visited[currentStop].push(currentBus);
+
+        let smallestChange = Infinity;
+        let nextStop = null;
+        let nextBus = null;
+        for(const stop in change){
+            for(const bus in change[stop]){
+                if(!(stop in visited) || (stop in visited && !visited[stop].includes(bus))){
+                    if(change[stop][bus] < smallestChange){
+                        smallestChange = change[stop][bus];
+                        nextStop = stop;
+                        nextBus = bus;
+                    }
+                    
+            }
+            
+                
+            }
+        }
+        currentStop = nextStop;
+        currentBus = nextBus;
+
+    }
+    return null;
+}
+
+
+
+
