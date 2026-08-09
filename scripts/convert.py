@@ -7,6 +7,8 @@ trip_stops = {}
 
 routes = {}
 
+schedule = {}
+
 with open("gtfs/stops.txt", "r", newline="", encoding="utf-8") as file:
     reader = csv.DictReader(file)
     for row in reader:
@@ -97,9 +99,30 @@ with open("data/routes.js", "w", encoding="utf-8") as file:
     file.write(json.dumps(routes, indent=2))
     file.write(";")
 
+   
 
+for stop_id, stop in stops.items():
+    schedule[stop["name"]] = {}
 
+for tripid, trip_list in trip_stops.items():
+    for trip in trip_list:
+        routeid = trip_info[tripid]["route_id"]
+        bus = route_numbers[routeid]
+        current_stopid = trip["stop_id"]
+        current_stop = stops[current_stopid]["name"]
+        if bus not in schedule[current_stop]:
+            schedule[current_stop][bus] = []
+        schedule[current_stop][bus].append({
+            "trip_id" : tripid,
+            "arrival" : trip["arrival"],
+            "departure" : trip["departure"]
+        })
+        
 
+with open("data/schedule.js", "w", encoding = "utf-8") as file:
+    file.write("export const schedule = ")
+    file.write(json.dumps(schedule, indent = 4))
+    file.write(";")
 
 
 
